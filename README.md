@@ -1,0 +1,2 @@
+Proyecto para una vidrieria el cual podemos ingresar pedidos, tenemos un area de bodeguero el cual asigan cortadores al pedido, podemos reactivar pedidos si aun disponen de planchas por cortar,
+un area para calvular la eficiencia de cada cortador y tambie podemos saber cuantas planchas a cortador cada cortador por perio o en general, y un visualizador para que los clientes puedan ver como va su pedido
