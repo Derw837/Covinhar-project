@@ -1,0 +1,307 @@
+/* styles.css */
+
+/* RESET */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* FUENTE */
+body {
+  font-family: "Segoe UI", Arial, sans-serif;
+}
+
+/***********************************************
+ * LOGIN
+ ***********************************************/
+.login-body {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: linear-gradient(135deg, #63a4ff, #83eaf1);
+}
+
+.login-container {
+  background-color: rgba(255,255,255,0.95);
+  width: 300px;
+  padding: 30px;
+  border-radius: 8px;
+  box-shadow: 0 6px 10px rgba(0,0,0,0.15);
+}
+
+.login-container h1 {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.login-container label {
+  display: block;
+  margin-top: 10px;
+  font-weight: 600;
+}
+
+.login-container input {
+  width: 100%;
+  padding: 8px;
+  margin-top: 5px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+}
+
+.message {
+  margin-top: 10px;
+  font-weight: bold;
+  text-align: center;
+}
+
+/***********************************************
+ * FACTURADOR
+ ***********************************************/
+.facturador-body {
+  background: #f0f2f5;
+  min-height: 100vh;
+}
+
+.header {
+  background: #004080;
+  color: #fff;
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.header h1 {
+  font-size: 1.5rem;
+}
+
+.user-info {
+  font-weight: bold;
+  margin-right: 20px;
+}
+
+.header nav {
+  display: flex;
+  gap: 10px;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 20px auto;
+  padding: 10px;
+  background: #fff;
+  border-radius: 6px;
+  box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+}
+
+.top-actions {
+  margin-bottom: 10px;
+  display: flex;
+  gap: 10px;
+}
+
+.search-section, .list-section {
+  background: #fafafa;
+  padding: 15px;
+  border-radius: 6px;
+  margin-bottom: 20px;
+  border: 1px solid #eee;
+}
+
+.search-section {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/***********************************************
+ * TABLAS
+ ***********************************************/
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 10px;
+}
+
+table thead {
+  background-color: #f2f2f2;
+}
+
+table th, table td {
+  padding: 8px;
+  border-bottom: 1px solid #ddd;
+  text-align: left;
+}
+
+tbody tr:nth-child(even) {
+  background-color: #f9f9f9;
+}
+
+#paginationControls button {
+  margin-right: 5px;
+}
+
+/***********************************************
+ * BOTONES 3D
+ ***********************************************/
+.btn-3d {
+  background: linear-gradient(45deg, #0061ff, #00c6ff);
+  color: #fff;
+  border: none;
+  padding: 7px 15px;
+  cursor: pointer;
+  font-weight: 600;
+  border-radius: 4px;
+  box-shadow: 0 4px #003f7f;
+  transition: transform 0.1s ease;
+}
+
+.btn-3d:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px #003f7f;
+}
+
+.btn-3d:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px #003f7f;
+}
+
+.btn-small {
+  padding: 5px 10px;
+  font-size: 0.8rem;
+}
+
+.red {
+  background: linear-gradient(45deg, #ff6666, #ff9999);
+  box-shadow: 0 4px #cc5252;
+}
+
+.grey {
+  background: linear-gradient(45deg, #aaaaaa, #cccccc);
+  box-shadow: 0 4px #888888;
+}
+
+.logout {
+  background: linear-gradient(45deg, #6c757d, #adb5bd);
+  box-shadow: 0 4px #495057;
+}
+
+/***********************************************
+ * MODALES
+ ***********************************************/
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 999;
+  left: 0; top: 0;
+  width: 100%; height: 100%;
+  overflow: auto;
+  background: rgba(0,0,0,0.5);
+}
+
+.modal-content {
+  background: #fff;
+  margin: 5% auto;
+  padding: 20px;
+  position: relative;
+  border-radius: 8px;
+  width: 60%;
+  max-width: 600px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+}
+
+.modal-lg {
+  max-width: 800px;
+}
+
+.close {
+  position: absolute;
+  right: 15px;
+  top: 15px;
+  font-size: 1.2rem;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.close:hover {
+  color: red;
+}
+
+/***********************************************
+ * FORMULARIOS
+ ***********************************************/
+.form-group {
+  margin-bottom: 10px;
+}
+.form-group label {
+  font-weight: 600;
+  display: block;
+  margin-bottom: 5px;
+}
+
+.form-group input[type="text"],
+.form-group input[type="date"],
+.form-group input[type="time"],
+.form-group input[type="number"] {
+  width: 100%;
+  padding: 6px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.product-group {
+  background: #eef6ff;
+  padding: 10px;
+  border-radius: 6px;
+  margin-bottom: 10px;
+  border: 1px solid #dde9ff;
+}
+
+#productList li {
+  background: #e1f0ff;
+  margin: 5px 0;
+  padding: 5px;
+  border-radius: 4px;
+  position: relative;
+}
+
+#productList li button {
+  position: absolute;
+  right: 10px;
+  top: 5px;
+  border: none;
+  background: none;
+  color: #f00;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+/***********************************************
+ * OTROS
+ ***********************************************/
+.message {
+  margin-top: 8px;
+  font-weight: bold;
+  text-align: center;
+}
+
+.logo-container {
+  text-align: center;
+  margin-bottom: 15px;
+}
+
+.logo-image {
+  max-width: 150px;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+}
+
+.logo-image-small {
+  max-width: 80px;
+  height: auto;
+  margin-right: 10px;
+  vertical-align: middle;
+}

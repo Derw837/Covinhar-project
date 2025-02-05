@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Covinhar - Login</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="login-body">
+
+<div class="login-container">
+  <!-- Espacio para el logo de la empresa -->
+  <div class="logo-container">
+    <img src="img/logo.png" alt="Logo de la empresa" class="logo-image">
+  </div>
+
+  <h1>Iniciar Sesión</h1>
+  <form id="loginForm">
+    <label for="nombre">Usuario:</label>
+    <input type="text" id="nombre" required>
+
+    <label for="contrasena">Contraseña:</label>
+    <input type="password" id="contrasena" required>
+
+    <button type="submit" class="btn-3d">Ingresar</button>
+  </form>
+  <div id="loginMessage" class="message"></div>
+</div>
+
+<script>
+const loginForm = document.getElementById('loginForm');
+const loginMessage = document.getElementById('loginMessage');
+
+loginForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  
+  const nombre = document.getElementById('nombre').value;
+  const contrasena = document.getElementById('contrasena').value;
+
+  try {
+    const resp = await fetch('http://localhost:3000/api/login', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ nombre, contrasena })
+});
+const data = await resp.json();
+
+if (resp.ok) {
+  localStorage.setItem('token', data.token);
+  localStorage.setItem('usuario', data.usuario);
+  localStorage.setItem('rol', data.rol);  // GUARDAMOS EL ROL
+
+  // Redirigir según rol
+  if (data.rol === 'facturador') {
+    window.location.href = 'facturador.html';
+  } else if (data.rol === 'bodeguero') {
+    window.location.href = 'bodeguero.html';
+  } else if (data.rol === 'cortador') {
+    window.location.href = 'cortador.html';
+  } else if (data.rol === 'admin') {
+    window.location.href = 'admin.html';
+  } 
+} else {
+  loginMessage.textContent = data.message || 'Error en login';
+  loginMessage.style.color = 'red';
+}
+
+  } catch (error) {
+    console.error(error);
+    loginMessage.textContent = 'Error de conexión';
+    loginMessage.style.color = 'red';
+  }
+});
+</script>
+</body>
+</html>

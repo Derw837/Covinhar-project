@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Covinhar - Facturador</title>
+  <!-- Tu archivo CSS -->
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+</head>
+<body class="facturador-body">
+
+<header class="header">
+  <!-- Logo de la empresa en el header -->
+  <div class="header-left">
+    <img src="img/logo.png" alt="Logo Covinhar" class="logo-image-small">
+  </div>
+  <h1>Área del Facturador</h1>
+  <!-- Mostramos el usuario conectado -->
+  <div id="userInfo" class="user-info"></div>
+
+  <nav>
+    <button id="btnRanking" class="btn-3d">Ver Ranking</button>
+    <button id="btnLogout" class="btn-3d logout">Logout</button>
+  </nav>
+</header>
+
+<main class="container">
+  <!-- TOP ACTIONS -->
+  <div class="top-actions">
+    <button id="btnNewPedido" class="btn-3d">Crear Pedido</button>
+    <button id="btnVerActivos" class="btn-3d">Pedidos Activos</button>
+    <button id="btnVerEntregados" class="btn-3d grey">Pedidos Entregados</button>
+  </div>
+
+  <!-- SECCIÓN BÚSQUEDA -->
+  <section class="search-section">
+    <label for="searchTerm">Buscar:</label>
+    <input type="text" id="searchTerm" placeholder="Factura, Cliente, Cortador...">
+    <label for="limitSelect">Ver:</label>
+    <select id="limitSelect">
+      <option value="10" selected>10</option>
+      <option value="25">25</option>
+      <option value="50">50</option>
+    </select>
+    <button id="btnSearch" class="btn-3d">Buscar</button>
+  </section>
+
+  <!-- LISTA PEDIDOS ACTIVOS -->
+  <section id="activosSection" class="list-section" style="display: block;">
+    <h2>Pedidos Activos</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Factura</th>
+          <th>Cliente</th>
+          <th>Productos</th>
+          <th>Fecha</th>
+          <th>Hora</th>
+          <th>Cortador</th>
+          <th>Estado</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody id="activosTableBody"></tbody>
+    </table>
+    <div id="paginationControls"></div>
+  </section>
+
+  <!-- LISTA PEDIDOS ENTREGADOS -->
+  <section id="entregadosSection" class="list-section" style="display: none;">
+    <h2>Pedidos Entregados</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Factura</th>
+          <th>Cliente</th>
+          <th>Productos</th>
+          <th>Fecha</th>
+          <th>Hora</th>
+          <th>Cortador</th>
+          <th>Estado</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody id="entregadosTableBody"></tbody>
+    </table>
+  </section>
+</main>
+
+<!-- MODAL CREAR PEDIDO -->
+<div id="crearPedidoModal" class="modal">
+  <div class="modal-content">
+    <span id="closeCrearPedidoModal" class="close">&times;</span>
+    <h2>Crear Pedido</h2>
+    <form id="crearPedidoForm">
+      <div class="form-group">
+        <label>N° Factura:</label>
+        <input type="text" id="crear_numero_factura" required>
+      </div>
+      <div class="form-group">
+        <label>Cliente:</label>
+        <input type="text" id="crear_cliente" required>
+      </div>
+      <div class="form-group">
+        <label>Fecha Entrega:</label>
+        <input type="date" id="crear_fecha_entrega">
+      </div>
+      <div class="form-group">
+        <label>Hora Entrega:</label>
+        <input type="time" id="crear_hora_entrega">
+      </div>
+
+      <hr>
+      <div class="form-group product-group">
+        <h3>Productos</h3>
+        <label>Producto:</label>
+        <select id="crear_selectProducto"></select>
+        <label>Cantidad:</label>
+        <input type="number" id="crear_cantidad" min="1" value="1">
+        <button type="button" id="crear_btnAddProduct" class="btn-3d">+ Agregar</button>
+      </div>
+      <ul id="crear_productList"></ul>
+
+      <div id="crearPedidoFormMessage" class="message"></div>
+      <button type="submit" class="btn-3d">Guardar</button>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL EDITAR PEDIDO -->
+<div id="editarPedidoModal" class="modal">
+  <div class="modal-content">
+    <span id="closeEditarPedidoModal" class="close">&times;</span>
+    <h2>Editar Pedido</h2>
+    <form id="editarPedidoForm">
+      <input type="hidden" id="editar_pedidoId" value="">
+
+      <div class="form-group">
+        <label>N° Factura:</label>
+        <input type="text" id="editar_numero_factura" required>
+      </div>
+      <div class="form-group">
+        <label>Cliente:</label>
+        <input type="text" id="editar_cliente" required>
+      </div>
+      <div class="form-group">
+        <label>Fecha Entrega:</label>
+        <input type="date" id="editar_fecha_entrega">
+      </div>
+      <div class="form-group">
+        <label>Hora Entrega:</label>
+        <input type="time" id="editar_hora_entrega">
+      </div>
+
+      <hr>
+      <div class="form-group product-group">
+        <h3>Productos</h3>
+        <label>Producto:</label>
+        <select id="editar_selectProducto"></select>
+        <label>Cantidad:</label>
+        <input type="number" id="editar_cantidad" min="1" value="1">
+        <button type="button" id="editar_btnAddProduct" class="btn-3d">+ Agregar</button>
+      </div>
+      <ul id="editar_productList"></ul>
+
+      <div id="editarPedidoFormMessage" class="message"></div>
+      <button type="submit" class="btn-3d">Actualizar</button>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL VER PRODUCTOS -->
+<div id="verProductosModal" class="modal">
+  <div class="modal-content">
+    <span id="closeVerProductosModal" class="close">&times;</span>
+    <h2>Productos del Pedido</h2>
+    <div id="productosPedidoList"></div>
+  </div>
+</div>
+
+<!-- MODAL RANKING -->
+<div id="rankingModal" class="modal">
+  <div class="modal-content">
+    <span id="closeRankingModal" class="close">&times;</span>
+    <h2>Ranking / Eficiencia / Carga de Trabajo</h2>
+    <div id="rankingContent"></div>
+  </div>
+</div>
+
+<script>
+/***************************************************
+ * 1. CHECK AUTH / MOSTRAR USUARIO
+ ***************************************************/
+const token = localStorage.getItem('token');
+const usuario = localStorage.getItem('usuario');
+const rol = localStorage.getItem('rol');
+
+if (!token || !usuario || !rol) {
+  window.location.href = 'login.html';
+}
+
+// Si el rol no es 'facturador', redirigir a login o a la página adecuada
+if (rol !== 'facturador') {
+  alert('No tienes acceso a esta sección');
+  window.location.href = 'login.html';
+}
+document.getElementById('userInfo').textContent = `Bienvenido, ${usuario}`;
+
+const socket = io('http://localhost:3000');
+socket.on('pedidoActualizado', (data) => {
+  console.log('Recibido pedidoActualizado', data);
+  // Llamar a loadPedidos() o lo que corresponda
+  loadPedidos();
+});
+
+
+/***************************************************
+ * 2. REFERENCIAS DOM
+ ***************************************************/
+const btnLogout = document.getElementById('btnLogout');
+btnLogout.addEventListener('click', () => {
+  localStorage.removeItem('token');
+  localStorage.removeItem('usuario');
+  window.location.href = 'login.html';
+});
+
+// Botones Activos/Entregados
+const btnVerActivos = document.getElementById('btnVerActivos');
+const btnVerEntregados = document.getElementById('btnVerEntregados');
+const activosSection = document.getElementById('activosSection');
+const entregadosSection = document.getElementById('entregadosSection');
+
+// Búsqueda
+const searchTerm = document.getElementById('searchTerm');
+const limitSelect = document.getElementById('limitSelect');
+const btnSearch = document.getElementById('btnSearch');
+
+// Tablas
+const activosTableBody = document.getElementById('activosTableBody');
+const entregadosTableBody = document.getElementById('entregadosTableBody');
+const paginationControls = document.getElementById('paginationControls');
+
+// Modal Crear
+const crearPedidoModal = document.getElementById('crearPedidoModal');
+const closeCrearPedidoModal = document.getElementById('closeCrearPedidoModal');
+const crearPedidoForm = document.getElementById('crearPedidoForm');
+const crearNumeroFacturaInput = document.getElementById('crear_numero_factura');
+const crearClienteInput = document.getElementById('crear_cliente');
+const crearFechaEntregaInput = document.getElementById('crear_fecha_entrega');
+const crearHoraEntregaInput = document.getElementById('crear_hora_entrega');
+const crearPedidoFormMessage = document.getElementById('crearPedidoFormMessage');
+
+// Modal Editar
+const editarPedidoModal = document.getElementById('editarPedidoModal');
+const closeEditarPedidoModal = document.getElementById('closeEditarPedidoModal');
+const editarPedidoForm = document.getElementById('editarPedidoForm');
+const editarPedidoIdInput = document.getElementById('editar_pedidoId');
+const editarNumeroFacturaInput = document.getElementById('editar_numero_factura');
+const editarClienteInput = document.getElementById('editar_cliente');
+const editarFechaEntregaInput = document.getElementById('editar_fecha_entrega');
+const editarHoraEntregaInput = document.getElementById('editar_hora_entrega');
+const editarPedidoFormMessage = document.getElementById('editarPedidoFormMessage');
+
+// Productos arrays
+let productosData = [];           // Todos los productos desde la BD
+let crearProductosArray = [];     // Array de productos en el modal "Crear"
+let editarProductosArray = [];    // Array de productos en el modal "Editar"
+
+// Selects y botones de productos
+const crearSelectProducto = document.getElementById('crear_selectProducto');
+const crearCantidadInput = document.getElementById('crear_cantidad');
+const crearBtnAddProduct = document.getElementById('crear_btnAddProduct');
+const crearProductList = document.getElementById('crear_productList');
+
+const editarSelectProducto = document.getElementById('editar_selectProducto');
+const editarCantidadInput = document.getElementById('editar_cantidad');
+const editarBtnAddProduct = document.getElementById('editar_btnAddProduct');
+const editarProductList = document.getElementById('editar_productList');
+
+// Botón nuevo pedido
+const btnNewPedido = document.getElementById('btnNewPedido');
+
+// Modal Ver Productos
+const verProductosModal = document.getElementById('verProductosModal');
+const closeVerProductosModal = document.getElementById('closeVerProductosModal');
+const productosPedidoList = document.getElementById('productosPedidoList');
+
+// Modal Ranking
+const btnRanking = document.getElementById('btnRanking');
+const rankingModal = document.getElementById('rankingModal');
+const closeRankingModal = document.getElementById('closeRankingModal');
+const rankingContent = document.getElementById('rankingContent');
+
+/***************************************************
+ * 3. EVENTOS
+ ***************************************************/
+// Alternar entre Activos y Entregados
+btnVerActivos.addEventListener('click', () => {
+  activosSection.style.display = 'block';
+  entregadosSection.style.display = 'none';
+  loadPedidos(); // recargar la lista de activos
+});
+btnVerEntregados.addEventListener('click', () => {
+  activosSection.style.display = 'none';
+  entregadosSection.style.display = 'block';
+  loadEntregados(); // recargar la lista de entregados
+});
+
+// Búsqueda
+btnSearch.addEventListener('click', () => {
+  if (activosSection.style.display === 'block') {
+    loadPedidos(1);
+  } else {
+    // Podrías programar búsqueda en entregados,
+    // pero por simplicidad recargamos activos
+    loadPedidos(1);
+  }
+});
+
+// Modal Crear Pedido: abrir
+btnNewPedido.addEventListener('click', () => {
+  clearCrearPedidoForm();
+  crearPedidoModal.style.display = 'block';
+});
+
+// Cerrar modal Crear
+closeCrearPedidoModal.addEventListener('click', () => {
+  crearPedidoModal.style.display = 'none';
+});
+
+// Cerrar modal Editar
+closeEditarPedidoModal.addEventListener('click', () => {
+  editarPedidoModal.style.display = 'none';
+});
+
+/***************************************************
+ * AGREGAR PRODUCTO (CREAR)
+ ***************************************************/
+crearBtnAddProduct.addEventListener('click', () => {
+  const prodId = parseInt(crearSelectProducto.value);
+  const ctd = parseInt(crearCantidadInput.value);
+  if (!prodId || ctd < 1) return;
+
+  const info = productosData.find((p) => p.id === prodId);
+  crearProductosArray.push({
+    productoId: prodId,
+    nombre: info ? info.nombre : 'Desconocido',
+    cantidad: ctd
+  });
+  renderCrearProductList();
+  crearCantidadInput.value = 1;
+});
+
+/***************************************************
+ * AGREGAR PRODUCTO (EDITAR)
+ ***************************************************/
+editarBtnAddProduct.addEventListener('click', () => {
+  const prodId = parseInt(editarSelectProducto.value);
+  const ctd = parseInt(editarCantidadInput.value);
+  if (!prodId || ctd < 1) return;
+
+  const info = productosData.find((p) => p.id === prodId);
+  editarProductosArray.push({
+    productoId: prodId,
+    nombre: info ? info.nombre : 'Desconocido',
+    cantidad: ctd
+  });
+  renderEditarProductList();
+  editarCantidadInput.value = 1;
+});
+
+/***************************************************
+ * FORM SUBMIT (CREAR)
+ ***************************************************/
+crearPedidoForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (crearProductosArray.length === 0) {
+    crearPedidoFormMessage.textContent = 'Agrega al menos un producto';
+    crearPedidoFormMessage.style.color = 'red';
+    return;
+  }
+
+  const body = {
+    numero_factura: crearNumeroFacturaInput.value.trim(),
+    cliente: crearClienteInput.value.trim(),
+    fecha_entrega: crearFechaEntregaInput.value,
+    hora_entrega: crearHoraEntregaInput.value,
+    productos: crearProductosArray.map((p) => ({
+      productoId: p.productoId,
+      cantidad: p.cantidad
+    }))
+  };
+
+  try {
+    const resp = await fetch('http://localhost:3000/api/pedidos', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const data = await resp.json();
+    if (resp.ok) {
+      crearPedidoFormMessage.textContent = data.message || 'Guardado con éxito';
+      crearPedidoFormMessage.style.color = 'green';
+      loadPedidos();
+      setTimeout(() => {
+        crearPedidoModal.style.display = 'none';
+        clearCrearPedidoForm();
+      }, 800);
+    } else {
+      crearPedidoFormMessage.textContent = data.message || 'Error al guardar';
+      crearPedidoFormMessage.style.color = 'red';
+    }
+  } catch (error) {
+    console.error(error);
+    crearPedidoFormMessage.textContent = 'Error de conexión';
+    crearPedidoFormMessage.style.color = 'red';
+  }
+});
+
+/***************************************************
+ * FORM SUBMIT (EDITAR)
+ ***************************************************/
+editarPedidoForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (editarProductosArray.length === 0) {
+    editarPedidoFormMessage.textContent = 'Agrega al menos un producto';
+    editarPedidoFormMessage.style.color = 'red';
+    return;
+  }
+
+  const body = {
+    numero_factura: editarNumeroFacturaInput.value.trim(),
+    cliente: editarClienteInput.value.trim(),
+    fecha_entrega: editarFechaEntregaInput.value,
+    hora_entrega: editarHoraEntregaInput.value,
+    productos: editarProductosArray.map((p) => ({
+      productoId: p.productoId,
+      cantidad: p.cantidad
+    }))
+  };
+
+  try {
+    const resp = await fetch(`http://localhost:3000/api/pedidos/${editarPedidoIdInput.value}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const data = await resp.json();
+    if (resp.ok) {
+      editarPedidoFormMessage.textContent = data.message || 'Actualizado con éxito';
+      editarPedidoFormMessage.style.color = 'green';
+      loadPedidos();
+      setTimeout(() => {
+        editarPedidoModal.style.display = 'none';
+        clearEditarPedidoForm();
+      }, 800);
+    } else {
+      editarPedidoFormMessage.textContent = data.message || 'Error al actualizar';
+      editarPedidoFormMessage.style.color = 'red';
+    }
+  } catch (error) {
+    console.error(error);
+    editarPedidoFormMessage.textContent = 'Error de conexión';
+    editarPedidoFormMessage.style.color = 'red';
+  }
+});
+
+/***************************************************
+ * CARGAR LISTA DE PRODUCTOS
+ ***************************************************/
+async function loadProductos() {
+  try {
+    const resp = await fetch('http://localhost:3000/api/productos');
+    const data = await resp.json();
+    productosData = data;
+
+    // Llenar selects (crear, editar)
+    crearSelectProducto.innerHTML = '';
+    editarSelectProducto.innerHTML = '';
+    data.forEach((prod) => {
+      // Para Crear
+      const opt1 = document.createElement('option');
+      opt1.value = prod.id;
+      opt1.textContent = prod.nombre;
+      crearSelectProducto.appendChild(opt1);
+
+      // Para Editar
+      const opt2 = document.createElement('option');
+      opt2.value = prod.id;
+      opt2.textContent = prod.nombre;
+      editarSelectProducto.appendChild(opt2);
+    });
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+/***************************************************
+ * LISTA DE PEDIDOS ACTIVOS
+ ***************************************************/
+async function loadPedidos(page = 1) {
+    const query = `?search=${searchTerm.value}&page=${page}&limit=${limitSelect.value}`;
+    try {
+      const resp = await fetch(`http://localhost:3000/api/pedidos${query}`);
+      const json = await resp.json();
+      if (resp.ok) {
+        // Filter out "Entregado" orders
+        const activePedidos = json.data.filter(p => p.estado !== 'Entregado');
+        renderPedidos(activePedidos, json.page, json.total, json.limit);
+      }
+    } catch (error) {
+      console.error('Error loadPedidos:', error);
+    }
+  }
+
+function renderPedidos(pedidos, currentPage, total, limit) {
+  activosTableBody.innerHTML = '';
+  paginationControls.innerHTML = '';
+
+  pedidos.forEach((p) => {
+    // Solo mostramos los que no estén "Entregado"
+    if (p.estado === 'Entregado') return;
+    const tr = document.createElement('tr');
+
+    const fechaStr = p.fecha_entrega ? p.fecha_entrega.substring(0,10) : '';
+    const horaStr = p.hora_entrega ? p.hora_entrega.substring(0,5) : '';
+
+    let cortadorLabel = '';
+    if (p.cortadores_asignados) {
+      const arr = p.cortadores_asignados.split(',');
+      if (arr.length === 1) cortadorLabel = arr[0];
+      else cortadorLabel = `${arr[0]} +${arr.length - 1}`;
+    }
+
+    tr.innerHTML = `
+      <td>${p.id}</td>
+      <td>${p.numero_factura}</td>
+      <td>${p.cliente}</td>
+      <td>
+        <button class="btn-3d btn-small ver-productos" data-productos="${p.productos || ''}">
+          Ver
+        </button>
+      </td>
+      <td>${fechaStr}</td>
+      <td>${horaStr}</td>
+      <td>${cortadorLabel}</td>
+      <td>${p.estado || ''}</td>
+      <td>
+        <button class="btn-3d btn-small edit-btn" data-id="${p.id}">Editar</button>
+        <button class="btn-3d btn-small red delete-btn" data-id="${p.id}">Eliminar</button>
+      </td>
+    `;
+    activosTableBody.appendChild(tr);
+  });
+
+  // Paginación
+  const totalPages = Math.ceil(total / limit);
+  for (let i = 1; i <= totalPages; i++) {
+    const btn = document.createElement('button');
+    btn.classList.add('btn-3d','btn-small');
+    btn.textContent = i;
+    if (i === currentPage) btn.disabled = true;
+    btn.addEventListener('click', () => loadPedidos(i));
+    paginationControls.appendChild(btn);
+  }
+
+  // Botones "Ver" productos
+  document.querySelectorAll('.ver-productos').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      const productosText = e.target.dataset.productos;
+      verProductosModal.style.display = 'block';
+      productosPedidoList.innerHTML = '';
+      if (!productosText) {
+        productosPedidoList.innerHTML = '<p>Sin productos.</p>';
+      } else {
+        const parts = productosText.split(' | ');
+        const ul = document.createElement('ul');
+        parts.forEach((prodStr) => {
+          const li = document.createElement('li');
+          li.textContent = prodStr;
+          ul.appendChild(li);
+        });
+        productosPedidoList.appendChild(ul);
+      }
+    });
+  });
+
+  // Botón Editar
+  document.querySelectorAll('.edit-btn').forEach((btn) => {
+    btn.addEventListener('click', async (e) => {
+      const id = e.target.dataset.id;
+      await loadPedidoById(id);
+    });
+  });
+
+  // Botón Eliminar
+  document.querySelectorAll('.delete-btn').forEach((btn) => {
+    btn.addEventListener('click', async (e) => {
+      const id = e.target.dataset.id;
+      if (confirm('¿Seguro de eliminar este pedido?')) {
+        await deletePedido(id);
+      }
+    });
+  });
+}
+
+/***************************************************
+ * GET /api/pedidos/:id para EDITAR
+ ***************************************************/
+async function loadPedidoById(id) {
+  try {
+    const resp = await fetch(`http://localhost:3000/api/pedidos/${id}`);
+    if (resp.ok) {
+      const pedido = await resp.json();
+      // Llenamos inputs
+      editarPedidoIdInput.value = pedido.id;
+      editarNumeroFacturaInput.value = pedido.numero_factura;
+      editarClienteInput.value = pedido.cliente;
+      editarFechaEntregaInput.value = pedido.fecha_entrega ? pedido.fecha_entrega.substring(0,10) : '';
+      editarHoraEntregaInput.value = pedido.hora_entrega ? pedido.hora_entrega.substring(0,5) : '';
+
+      // Reconstruimos el array de productos
+      editarProductosArray = pedido.productos.map((prod) => ({
+  productoId: prod.productoId,
+  // IMPORTANTE: usar "producto_nombre" en vez de "nombre"
+  nombre: prod.producto_nombre || 'Producto desconocido',
+  cantidad: prod.cantidad
+}));
+
+      renderEditarProductList();
+
+      editarPedidoModal.style.display = 'block'; // Mostrar modal
+    } else {
+      const data = await resp.json();
+      alert(data.message || 'Error al cargar pedido');
+    }
+  } catch (error) {
+    console.error(error);
+    alert('Error de conexión al cargar el pedido');
+  }
+}
+
+/***************************************************
+ * ELIMINAR PEDIDO (DELETE /api/pedidos/:id)
+ ***************************************************/
+async function deletePedido(id) {
+  try {
+    const resp = await fetch(`http://localhost:3000/api/pedidos/${id}`, {
+      method: 'DELETE'
+    });
+    const data = await resp.json();
+    if (resp.ok) {
+      loadPedidos();
+    } else {
+      alert(data.message || 'Error al eliminar');
+    }
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+/***************************************************
+ * LISTA DE PEDIDOS ENTREGADOS
+ ***************************************************/
+async function loadEntregados() {
+    try {
+      const resp = await fetch('http://localhost:3000/api/pedidos/entregados');
+      const data = await resp.json();
+      if (resp.ok) {
+        // Filter to only show "Entregado" orders
+        const entregadosPedidos = data.filter(p => p.estado === 'Entregado');
+        renderEntregados(entregadosPedidos);
+      }
+    } catch (error) {
+      console.error('Error al cargar entregados:', error);
+    }
+  }
+
+function renderEntregados(pedidos) {
+  entregadosTableBody.innerHTML = '';
+  pedidos.forEach((p) => {
+    const tr = document.createElement('tr');
+
+    const fechaStr = p.fecha_entrega ? p.fecha_entrega.substring(0,10) : '';
+    const horaStr = p.hora_entrega ? p.hora_entrega.substring(0,5) : '';
+    let cortadorLabel = '';
+    if (p.cortadores_asignados) {
+      const arr = p.cortadores_asignados.split(',');
+      if (arr.length === 1) cortadorLabel = arr[0];
+      else cortadorLabel = `${arr[0]} +${arr.length - 1}`;
+    }
+
+    tr.innerHTML = `
+      <td>${p.id}</td>
+      <td>${p.numero_factura}</td>
+      <td>${p.cliente}</td>
+      <td>
+        <button class="btn-3d btn-small ver-productos" data-productos="${p.productos || ''}">
+          Ver
+        </button>
+      </td>
+      <td>${fechaStr}</td>
+      <td>${horaStr}</td>
+      <td>${cortadorLabel}</td>
+      <td>${p.estado}</td>
+      <td>
+        <button class="btn-3d btn-small grey react-btn" data-id="${p.id}">Reactivar</button>
+      </td>
+    `;
+    entregadosTableBody.appendChild(tr);
+  });
+
+  // Botón Ver productos
+  document.querySelectorAll('.ver-productos').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      const productosText = e.target.dataset.productos;
+      verProductosModal.style.display = 'block';
+      productosPedidoList.innerHTML = '';
+      if (!productosText) {
+        productosPedidoList.innerHTML = '<p>Sin productos.</p>';
+      } else {
+        const parts = productosText.split(' | ');
+        const ul = document.createElement('ul');
+        parts.forEach((prodStr) => {
+          const li = document.createElement('li');
+          li.textContent = prodStr;
+          ul.appendChild(li);
+        });
+        productosPedidoList.appendChild(ul);
+      }
+    });
+  });
+
+  // Botón Reactivar
+  document.querySelectorAll('.react-btn').forEach((btn) => {
+    btn.addEventListener('click', async (e) => {
+      const id = e.target.dataset.id;
+      const resp = await fetch(`http://localhost:3000/api/pedidos/${id}/reactivar`, {
+        method: 'PUT'
+      });
+      const data = await resp.json();
+      if (resp.ok) {
+        alert(data.message);
+        loadEntregados();
+      } else {
+        alert(data.message || 'Error al reactivar');
+      }
+    });
+  });
+}
+
+/***************************************************
+ * RENDER PRODUCTOS (CREAR)
+ ***************************************************/
+function renderCrearProductList() {
+  crearProductList.innerHTML = '';
+  crearProductosArray.forEach((item, idx) => {
+    const li = document.createElement('li');
+    li.textContent = `${item.nombre} x ${item.cantidad}`;
+    const removeBtn = document.createElement('button');
+    removeBtn.textContent = 'x';
+    removeBtn.onclick = () => {
+      crearProductosArray.splice(idx, 1);
+      renderCrearProductList();
+    };
+    li.appendChild(removeBtn);
+    crearProductList.appendChild(li);
+  });
+}
+
+/***************************************************
+ * RENDER PRODUCTOS (EDITAR)
+ ***************************************************/
+function renderEditarProductList() {
+  editarProductList.innerHTML = '';
+  editarProductosArray.forEach((item, idx) => {
+    const li = document.createElement('li');
+    li.textContent = `${item.nombre || 'Producto desconocido'} x ${item.cantidad}`;
+    const removeBtn = document.createElement('button');
+    removeBtn.textContent = 'x';
+    removeBtn.onclick = () => {
+      editarProductosArray.splice(idx, 1);
+      renderEditarProductList();
+    };
+    li.appendChild(removeBtn);
+    editarProductList.appendChild(li);
+  });
+}
+
+/***************************************************
+ * LIMPIAR FORM CREAR
+ ***************************************************/
+function clearCrearPedidoForm() {
+  crearNumeroFacturaInput.value = '';
+  crearClienteInput.value = '';
+  crearFechaEntregaInput.value = '';
+  crearHoraEntregaInput.value = '';
+  crearProductosArray = [];
+  renderCrearProductList();
+  crearPedidoFormMessage.textContent = '';
+}
+
+/***************************************************
+ * LIMPIAR FORM EDITAR
+ ***************************************************/
+function clearEditarPedidoForm() {
+  editarPedidoIdInput.value = '';
+  editarNumeroFacturaInput.value = '';
+  editarClienteInput.value = '';
+  editarFechaEntregaInput.value = '';
+  editarHoraEntregaInput.value = '';
+  editarProductosArray = [];
+  renderEditarProductList();
+  editarPedidoFormMessage.textContent = '';
+}
+
+/***************************************************
+ * CERRAR MODAL VER PRODUCTOS
+ ***************************************************/
+closeVerProductosModal.addEventListener('click', () => {
+  verProductosModal.style.display = 'none';
+});
+
+/***************************************************
+ * MODAL RANKING
+ ***************************************************/
+btnRanking.addEventListener('click', openRankingModal);
+closeRankingModal.addEventListener('click', () => {
+  rankingModal.style.display = 'none';
+});
+async function openRankingModal() {
+  rankingModal.style.display = 'block';
+  try {
+    const resp = await fetch('http://localhost:3000/api/ranking');
+    const data = await resp.json();
+    rankingContent.innerHTML = `<p>${data.message}</p>`;
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+/***************************************************
+ * AUTO-LOGOUT POR INACTIVIDAD
+ ***************************************************/
+// Variable para guardar el timeout
+let inactivityTimeout = null;
+
+// Función que cierra sesión
+function logoutPorInactividad() {
+  alert("Sesión cerrada por inactividad");
+  // Borramos token y usuario
+  localStorage.removeItem('token');
+  localStorage.removeItem('usuario');
+  // Redirigimos a login
+  window.location.href = 'login.html';
+}
+
+// Reiniciar el temporizador de inactividad
+function resetInactivityTimer() {
+  // Si había un timer corriendo, se limpia
+  if (inactivityTimeout) {
+    clearTimeout(inactivityTimeout);
+  }
+  // Se setea un nuevo timer a 10 minutos (600_000 ms)
+  inactivityTimeout = setTimeout(() => {
+    logoutPorInactividad();
+  }, 5 * 60 * 1000); // 10 minutos
+}
+
+// Escuchamos eventos que consideramos "actividad"
+document.addEventListener('mousemove', resetInactivityTimer);
+document.addEventListener('keydown', resetInactivityTimer);
+
+// Al cargar la página, iniciamos el timer
+resetInactivityTimer();
+
+
+/***************************************************
+ * INIT
+ ***************************************************/
+(async function init(){
+  await loadProductos();
+  loadPedidos(); // Cargar Pedidos Activos por defecto
+})();
+
+</script>
+</body>
+</html>
+

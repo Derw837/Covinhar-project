@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Covinhar - Bodeguero</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="http://localhost:3000/socket.io/socket.io.js"></script>
+</head>
+<body class="facturador-body">
+
+<header class="header">
+  <div class="header-left">
+    <img src="img/logo.png" alt="Logo Covinhar" class="logo-image-small">
+  </div>
+  <h1>Área del Bodeguero</h1>
+  <div id="userInfo" class="user-info"></div>
+  <nav>
+    <button id="btnRanking" class="btn-3d">Ver Ranking</button>
+    <button id="btnLogout" class="btn-3d logout">Logout</button>
+  </nav>
+</header>
+
+<main class="container">
+  <div class="top-actions">
+    <button id="btnVerActivos" class="btn-3d">Pedidos Activos</button>
+    <button id="btnVerEntregados" class="btn-3d grey">Pedidos Entregados</button>
+    <button id="btnCortadores" class="btn-3d grey">Cortadores</button>
+  </div>
+
+  <section class="search-section">
+    <label>Buscar:</label>
+    <input type="text" id="searchTerm" placeholder="Factura, Cliente, Cortador...">
+    <label>Ver:</label>
+    <select id="limitSelect">
+      <option value="10" selected>10</option>
+      <option value="25">25</option>
+      <option value="50">50</option>
+    </select>
+    <button id="btnSearch" class="btn-3d">Buscar</button>
+  </section>
+
+  <!-- LISTA PEDIDOS ACTIVOS -->
+  <section id="activosSection" class="list-section" style="display:block;">
+    <h2>Pedidos Activos</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Factura</th>
+          <th>Cliente</th>
+          <th>Productos</th>
+          <th>Fecha</th>
+          <th>Hora</th>
+          <th>Cortadores</th>
+          <th>Estado</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody id="activosTableBody"></tbody>
+    </table>
+    <div id="paginationControls"></div>
+  </section>
+
+  <!-- LISTA PEDIDOS ENTREGADOS -->
+  <section id="entregadosSection" class="list-section" style="display:none;">
+    <h2>Pedidos Entregados</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Factura</th>
+          <th>Cliente</th>
+          <th>Productos</th>
+          <th>Fecha</th>
+          <th>Hora</th>
+          <th>Cortadores</th>
+          <th>Estado</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody id="entregadosTableBody"></tbody>
+    </table>
+  </section>
+
+  <!-- SECCIÓN LISTA DE CORTADORES -->
+  <section id="cortadoresSection" class="list-section" style="display:none;">
+    <h2>Lista de Cortadores</h2>
+    <div id="cortadoresButtons"></div>
+  </section>
+
+  <!-- SECCIÓN PEDIDOS DE UN CORTADOR -->
+  <section id="cortadorPedidosSection" class="list-section" style="display:none;">
+    <h2>Pedidos de <span id="cortadorName"></span></h2>
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Factura</th>
+          <th>Cliente</th>
+          <th>Productos</th>
+          <th>Fecha</th>
+          <th>Hora</th>
+          <th>Estado</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody id="cortadorPedidosTableBody"></tbody>
+    </table>
+  </section>
+
+</main>
+
+<!-- MODAL VER PRODUCTOS -->
+<div id="verProductosModal" class="modal">
+  <div class="modal-content">
+    <span id="closeVerProductosModal" class="close">&times;</span>
+    <h2>Productos del Pedido</h2>
+    <div id="productosPedidoList"></div>
+  </div>
+</div>
+
+<!-- MODAL ASIGNAR CORTADORES -->
+<div id="asignarCortadoresModal" class="modal">
+  <div class="modal-content">
+    <span id="closeAsignarCortadoresModal" class="close">&times;</span>
+    <h2>Asignar Cortadores</h2>
+    <input type="hidden" id="asignarPedidoId" value="">
+    <div id="cortadoresLista" style="max-height:200px; overflow:auto;"></div>
+    <div id="asignarMessage" class="message"></div>
+    <button id="btnAsignar" class="btn-3d">Asignar</button>
+  </div>
+</div>
+
+<!-- MODAL CAMBIAR ESTADO -->
+<div id="cambiarEstadoModal" class="modal">
+  <div class="modal-content">
+    <span id="closeCambiarEstadoModal" class="close">&times;</span>
+    <h2>Cambiar Estado</h2>
+    <input type="hidden" id="cambiarEstadoPedidoId" value="">
+    <label>Nuevo Estado:</label>
+    <select id="selectEstado"></select>
+    <div id="cambiarEstadoMessage" class="message"></div>
+    <button id="btnGuardarEstado" class="btn-3d">Guardar</button>
+  </div>
+</div>
+
+<!-- MODAL ENTREGAR -->
+<div id="entregarModal" class="modal">
+  <div class="modal-content">
+    <span id="closeEntregarModal" class="close">&times;</span>
+    <h2>Entregar Pedido</h2>
+    <input type="hidden" id="entregarPedidoId" value="">
+    <p>Selecciona la cantidad que vas a entregar de cada producto:</p>
+    <div id="entregarProductosList"></div>
+    <div id="entregarMessage" class="message"></div>
+    <button id="btnEntregar" class="btn-3d">Guardar Entrega</button>
+  </div>
+</div>
+
+<!-- MODAL RANKING -->
+<div id="rankingModal" class="modal">
+  <div class="modal-content">
+    <span id="closeRankingModal" class="close">&times;</span>
+    <h2>Ranking Cortadores</h2>
+    <div id="rankingContent"></div>
+  </div>
+</div>
+
+<script>
+/****************************************************
+ * CHECK AUTH
+ ****************************************************/
+const token=localStorage.getItem('token');
+const usuario=localStorage.getItem('usuario');
+if(!token || !usuario){
+  window.location.href='login.html';
+}
+document.getElementById('userInfo').textContent=`Bienvenido, ${usuario}`;
+
+/****************************************************
+ * SOCKET
+ ****************************************************/
+const socket=io('http://localhost:3000');
+socket.on('pedidoActualizado',(data)=>{
+  console.log('pedidoActualizado:',data);
+  if(activosSection.style.display==='block'){
+    loadPedidos();
+  } else if(entregadosSection.style.display==='block'){
+    loadEntregados();
+  }
+  // si estás en cortadoresSection/cortadorPedidosSection => recargar si deseas
+});
+
+/****************************************************
+ * DOM REFS
+ ****************************************************/
+const btnLogout=document.getElementById('btnLogout');
+btnLogout.addEventListener('click',()=>{
+  localStorage.removeItem('token');
+  localStorage.removeItem('usuario');
+  window.location.href='login.html';
+});
+
+const btnVerActivos=document.getElementById('btnVerActivos');
+const btnVerEntregados=document.getElementById('btnVerEntregados');
+const btnCortadores=document.getElementById('btnCortadores');
+
+const activosSection=document.getElementById('activosSection');
+const entregadosSection=document.getElementById('entregadosSection');
+const cortadoresSection=document.getElementById('cortadoresSection');
+const cortadorPedidosSection=document.getElementById('cortadorPedidosSection');
+
+const searchTerm=document.getElementById('searchTerm');
+const limitSelect=document.getElementById('limitSelect');
+const btnSearch=document.getElementById('btnSearch');
+
+const activosTableBody=document.getElementById('activosTableBody');
+const entregadosTableBody=document.getElementById('entregadosTableBody');
+const paginationControls=document.getElementById('paginationControls');
+
+const cortadoresButtons=document.getElementById('cortadoresButtons');
+const cortadorName=document.getElementById('cortadorName');
+const cortadorPedidosTableBody=document.getElementById('cortadorPedidosTableBody');
+
+const verProductosModal=document.getElementById('verProductosModal');
+const closeVerProductosModal=document.getElementById('closeVerProductosModal');
+const productosPedidoList=document.getElementById('productosPedidoList');
+
+const asignarCortadoresModal=document.getElementById('asignarCortadoresModal');
+const closeAsignarCortadoresModal=document.getElementById('closeAsignarCortadoresModal');
+const asignarPedidoId=document.getElementById('asignarPedidoId');
+const cortadoresLista=document.getElementById('cortadoresLista');
+const asignarMessage=document.getElementById('asignarMessage');
+const btnAsignar=document.getElementById('btnAsignar');
+
+const cambiarEstadoModal=document.getElementById('cambiarEstadoModal');
+const closeCambiarEstadoModal=document.getElementById('closeCambiarEstadoModal');
+const cambiarEstadoPedidoId=document.getElementById('cambiarEstadoPedidoId');
+const selectEstado=document.getElementById('selectEstado');
+const cambiarEstadoMessage=document.getElementById('cambiarEstadoMessage');
+const btnGuardarEstado=document.getElementById('btnGuardarEstado');
+
+const entregarModal=document.getElementById('entregarModal');
+const closeEntregarModal=document.getElementById('closeEntregarModal');
+const entregarPedidoId=document.getElementById('entregarPedidoId');
+const entregarProductosList=document.getElementById('entregarProductosList');
+const entregarMessage=document.getElementById('entregarMessage');
+const btnEntregar=document.getElementById('btnEntregar');
+
+const btnRanking=document.getElementById('btnRanking');
+const rankingModal=document.getElementById('rankingModal');
+const closeRankingModal=document.getElementById('closeRankingModal');
+const rankingContent=document.getElementById('rankingContent');
+
+/****************************************************
+ * EVENTOS DE BOTONES
+ ****************************************************/
+btnVerActivos.addEventListener('click',()=>{
+  activosSection.style.display='block';
+  entregadosSection.style.display='none';
+  cortadoresSection.style.display='none';
+  cortadorPedidosSection.style.display='none';
+  loadPedidos();
+});
+btnVerEntregados.addEventListener('click',()=>{
+  activosSection.style.display='none';
+  entregadosSection.style.display='block';
+  cortadoresSection.style.display='none';
+  cortadorPedidosSection.style.display='none';
+  loadEntregados();
+});
+btnCortadores.addEventListener('click',()=>{
+  activosSection.style.display='none';
+  entregadosSection.style.display='none';
+  cortadoresSection.style.display='block';
+  cortadorPedidosSection.style.display='none';
+  loadCortadoresList();
+});
+
+btnSearch.addEventListener('click',()=>{
+  if(activosSection.style.display==='block'){
+    loadPedidos();
+  } else if(entregadosSection.style.display==='block'){
+    loadEntregados();
+  }
+});
+
+// Cerrar modales
+closeVerProductosModal.addEventListener('click',()=>{
+  verProductosModal.style.display='none';
+});
+closeAsignarCortadoresModal.addEventListener('click',()=>{
+  asignarCortadoresModal.style.display='none';
+});
+closeCambiarEstadoModal.addEventListener('click',()=>{
+  cambiarEstadoModal.style.display='none';
+});
+closeEntregarModal.addEventListener('click',()=>{
+  entregarModal.style.display='none';
+});
+closeRankingModal.addEventListener('click',()=>{
+  rankingModal.style.display='none';
+});
+
+/****************************************************
+ * RANKING
+ ****************************************************/
+btnRanking.addEventListener('click', openRankingModal);
+function openRankingModal(){
+  rankingModal.style.display='block';
+  rankingContent.innerHTML='Cargando ranking...';
+  fetch('http://localhost:3000/api/ranking')
+    .then(r=>r.json())
+    .then(data=>{
+      if(!Array.isArray(data) || data.length===0){
+        rankingContent.innerHTML='<p>Sin datos de ranking</p>';
+        return;
+      }
+      let html='<table><thead><tr><th>Cortador</th><th>Total Entregado</th><th>Tiempo Prom (Hrs)</th></tr></thead><tbody>';
+      data.forEach(row=>{
+        html+=`<tr>
+          <td>${row.nombre}</td>
+          <td>${row.totalEntregado}</td>
+          <td>${row.tiempoPromedio||0}</td>
+        </tr>`;
+      });
+      html+='</tbody></table>';
+      rankingContent.innerHTML=html;
+    })
+    .catch(e=>{
+      console.error(e);
+      rankingContent.innerHTML='<p>Error al cargar ranking</p>';
+    });
+}
+
+/****************************************************
+ * LISTA DE CORTADORES (BOTONES)
+ ****************************************************/
+async function loadCortadoresList(){
+  cortadoresButtons.innerHTML='Cargando cortadores...';
+  try{
+    const resp=await fetch('http://localhost:3000/api/cortadores');
+    const data=await resp.json();
+    if(resp.ok){
+      let html='';
+      data.forEach(c=>{
+        html+=`
+          <button class="btn-3d cortador-btn" data-id="${c.id}">
+            ${c.nombre}
+          </button>
+        `;
+      });
+      cortadoresButtons.innerHTML=html;
+    } else {
+      cortadoresButtons.innerHTML='<p>Error al cargar cortadores</p>';
+    }
+  }catch(error){
+    console.error(error);
+    cortadoresButtons.innerHTML='<p>Error conexión</p>';
+  }
+}
+
+// Al pinchar un cortador => ver sus pedidos
+document.addEventListener('click',(e)=>{
+  if(e.target.classList.contains('cortador-btn')){
+    const cid=e.target.dataset.id;
+    const cname=e.target.textContent;
+    cortadoresSection.style.display='none';
+    cortadorPedidosSection.style.display='block';
+    cortadorName.textContent=cname;
+    loadPedidosDeCortador(cid);
+  }
+});
+
+/****************************************************
+ * LISTA PEDIDOS DE UN CORTADOR
+ ****************************************************/
+async function loadPedidosDeCortador(cortadorId){
+  try{
+    const resp=await fetch(`http://localhost:3000/api/pedidos-cortador/${cortadorId}`);
+    const data=await resp.json();
+    if(resp.ok){
+      renderPedidosCortador(data, cortadorId);
+    } else {
+      console.error('Error cargar pedidos cortador:', data);
+    }
+  }catch(error){
+    console.error(error);
+  }
+}
+
+function renderPedidosCortador(pedidos, cortadorId){
+  cortadorPedidosTableBody.innerHTML='';
+  pedidos.forEach(p=>{
+    if(p.estado==='Entregado') return;
+    const fechaStr=p.fecha_entrega? p.fecha_entrega.substring(0,10):'';
+    const horaStr=p.hora_entrega? p.hora_entrega.substring(0,5):'';
+
+    // Solo muestro "Entregar" si p.estado==='Listo'
+    let entregarBtn='';
+    if(p.estado==='Listo'){
+      entregarBtn=`<button class="btn-3d btn-small entrega-btn" data-cortador="${cortadorId}" data-id="${p.id}">Entregar</button>`;
+    }
+
+    const tr=document.createElement('tr');
+    tr.innerHTML=`
+      <td>${p.id}</td>
+      <td>${p.numero_factura}</td>
+      <td>${p.cliente}</td>
+      <td>
+        <button class="btn-3d btn-small ver-productos-btn" data-prod="${p.productos||''}">
+          Ver
+        </button>
+      </td>
+      <td>${fechaStr}</td>
+      <td>${horaStr}</td>
+      <td>${p.estado||''}</td>
+      <td>
+        <button class="btn-3d btn-small estado-btn" data-cortador="${cortadorId}" data-id="${p.id}" data-estado="${p.estado||''}">
+          Cambiar Estado
+        </button>
+        ${entregarBtn}
+      </td>
+    `;
+    cortadorPedidosTableBody.appendChild(tr);
+  });
+}
+
+/****************************************************
+ * LISTA PEDIDOS ACTIVOS
+ ****************************************************/
+async function loadPedidos(page=1){
+  const query=`?search=${searchTerm.value}&page=${page}&limit=${limitSelect.value}`;
+  try{
+    const resp=await fetch(`http://localhost:3000/api/pedidos${query}`);
+    const data=await resp.json();
+    if(resp.ok){
+      renderPedidos(data.data, data.page, data.total, data.limit);
+    }
+  }catch(error){
+    console.error(error);
+  }
+}
+
+function renderPedidos(pedidos, currentPage, total, limit){
+  activosTableBody.innerHTML='';
+  paginationControls.innerHTML='';
+
+  const filtrados=pedidos.filter(p=>p.estado!=='Entregado');
+  filtrados.forEach(p=>{
+    const fechaStr=p.fecha_entrega? p.fecha_entrega.substring(0,10):'';
+    const horaStr=p.hora_entrega? p.hora_entrega.substring(0,5):'';
+    let cortLabel='';
+    if(p.cortadores_asignados){
+      const arr=p.cortadores_asignados.split(',');
+      if(arr.length===1) cortLabel=arr[0];
+      else cortLabel=`${arr[0]} +${arr.length-1}`;
+    }
+
+    const tr=document.createElement('tr');
+    tr.innerHTML=`
+      <td>${p.id}</td>
+      <td>${p.numero_factura}</td>
+      <td>${p.cliente}</td>
+      <td>
+        <button class="btn-3d btn-small ver-productos-btn" data-prod="${p.products||p.productos||''}">
+          Ver
+        </button>
+      </td>
+      <td>${fechaStr}</td>
+      <td>${horaStr}</td>
+      <td>${cortLabel}</td>
+      <td>${p.estado||''}</td>
+      <td>
+        <button class="btn-3d btn-small asignar-btn" data-id="${p.id}">Asignar</button>
+      </td>
+    `;
+    activosTableBody.appendChild(tr);
+  });
+
+  // Paginación
+  const totalPages=Math.ceil(total/limit);
+  for(let i=1; i<=totalPages; i++){
+    const b=document.createElement('button');
+    b.classList.add('btn-3d','btn-small');
+    b.textContent=i;
+    if(i===currentPage) b.disabled=true;
+    b.addEventListener('click',()=>loadPedidos(i));
+    paginationControls.appendChild(b);
+  }
+
+  // Ver productos
+  document.querySelectorAll('.ver-productos-btn').forEach(btn=>{
+    btn.addEventListener('click',(e)=>{
+      const prodText=e.target.dataset.prod;
+      verProductosModal.style.display='block';
+      productosPedidoList.innerHTML='';
+      if(!prodText){
+        productosPedidoList.innerHTML='<p>Sin productos</p>';
+      } else {
+        const parts=prodText.split(' | ');
+        const ul=document.createElement('ul');
+        parts.forEach(str=>{
+          const li=document.createElement('li');
+          li.textContent=str;
+          ul.appendChild(li);
+        });
+        productosPedidoList.appendChild(ul);
+      }
+    });
+  });
+
+  // Asignar
+  document.querySelectorAll('.asignar-btn').forEach(btn=>{
+    btn.addEventListener('click',async (e)=>{
+      const pid=e.target.dataset.id;
+      asignarPedidoId.value=pid;
+      asignarMessage.textContent='';
+      await loadCortadores(); 
+      asignarCortadoresModal.style.display='block';
+    });
+  });
+}
+
+/****************************************************
+ * LISTA PEDIDOS ENTREGADOS
+ ****************************************************/
+async function loadEntregados(){
+  try{
+    const resp=await fetch('http://localhost:3000/api/pedidos/entregados');
+    const data=await resp.json();
+    if(resp.ok){
+      renderEntregados(data);
+    }
+  }catch(error){
+    console.error(error);
+  }
+}
+
+function renderEntregados(pedidos){
+  entregadosTableBody.innerHTML='';
+  pedidos.forEach(p=>{
+    const fechaStr=p.fecha_entrega? p.fecha_entrega.substring(0,10):'';
+    const horaStr=p.hora_entrega? p.hora_entrega.substring(0,5):'';
+    let cortLabel='';
+    if(p.cortadores_asignados){
+      const arr=p.cortadores_asignados.split(',');
+      if(arr.length===1) cortLabel=arr[0];
+      else cortLabel=`${arr[0]} +${arr.length-1}`;
+    }
+    const tr=document.createElement('tr');
+    if(p.sumActual && p.sumActual>0){
+      tr.style.color='red';
+    } else {
+      tr.style.color='gray';
+    }
+    tr.innerHTML=`
+      <td>${p.id}</td>
+      <td>${p.numero_factura}</td>
+      <td>${p.cliente}</td>
+      <td>
+        <button class="btn-3d btn-small ver-productos-btn" data-prod="${p.products||p.productos||''}">
+          Ver
+        </button>
+      </td>
+      <td>${fechaStr}</td>
+      <td>${horaStr}</td>
+      <td>${cortLabel}</td>
+      <td>${p.estado}</td>
+      <td></td>
+    `;
+    entregadosTableBody.appendChild(tr);
+
+    // Reactivar
+    const tdAcc=tr.querySelector('td:last-child');
+    if(p.sumActual && p.sumActual>0){
+      const btnReac=document.createElement('button');
+      btnReac.classList.add('btn-3d','btn-small','grey','react-btn');
+      btnReac.dataset.id=p.id;
+      btnReac.textContent='Reactivar';
+      tdAcc.appendChild(btnReac);
+    }
+  });
+
+  // Ver productos
+  document.querySelectorAll('.ver-productos-btn').forEach(btn=>{
+    btn.addEventListener('click',(e)=>{
+      const prodText=e.target.dataset.prod;
+      verProductosModal.style.display='block';
+      productosPedidoList.innerHTML='';
+      if(!prodText){
+        productosPedidoList.innerHTML='<p>Sin productos.</p>';
+      } else {
+        const parts=prodText.split(' | ');
+        const ul=document.createElement('ul');
+        parts.forEach(str=>{
+          const li=document.createElement('li');
+          li.textContent=str;
+          ul.appendChild(li);
+        });
+        productosPedidoList.appendChild(ul);
+      }
+    });
+  });
+
+  // Botón Reactivar
+  document.querySelectorAll('.react-btn').forEach(btn=>{
+    btn.addEventListener('click',async (e)=>{
+      const pid=e.target.dataset.id;
+      try{
+        const resp=await fetch(`http://localhost:3000/api/pedidos/${pid}/reactivar`,{
+          method:'PUT'
+        });
+        const data=await resp.json();
+        if(resp.ok){
+          alert(data.message);
+          loadEntregados();
+        } else {
+          alert(data.message||'Error al reactivar');
+        }
+      }catch(error){
+        console.error(error);
+      }
+    });
+  });
+}
+
+/****************************************************
+ * CARGAR LISTA CORTADORES (para asignar)
+ ****************************************************/
+async function loadCortadores(){
+  cortadoresLista.innerHTML='Cargando...';
+  try{
+    const resp=await fetch('http://localhost:3000/api/cortadores');
+    const data=await resp.json();
+    if(resp.ok){
+      let html='';
+      data.forEach(c=>{
+        html+=`
+          <div>
+            <input type="checkbox" class="chkCortador" value="${c.id}" id="cort${c.id}">
+            <label for="cort${c.id}">${c.nombre}</label>
+          </div>
+        `;
+      });
+      cortadoresLista.innerHTML=html;
+    } else {
+      cortadoresLista.innerHTML='<p>Error al cargar cortadores</p>';
+    }
+  }catch(error){
+    console.error(error);
+    cortadoresLista.innerHTML='<p>Error de conexión</p>';
+  }
+}
+
+/****************************************************
+ * ASIGNAR CORTADORES
+ ****************************************************/
+btnAsignar.addEventListener('click', async ()=>{
+  asignarMessage.textContent='';
+  const pid=asignarPedidoId.value;
+  const selected=Array.from(document.querySelectorAll('.chkCortador:checked'))
+                     .map(chk=>parseInt(chk.value));
+  if(!pid||selected.length===0){
+    asignarMessage.textContent='Selecciona al menos un cortador';
+    return;
+  }
+  try{
+    const resp=await fetch('http://localhost:3000/api/asignaciones',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ pedidoId: parseInt(pid), cortadores: selected })
+    });
+    const data=await resp.json();
+    if(resp.ok){
+      asignarMessage.style.color='green';
+      asignarMessage.textContent=data.message;
+      loadPedidos();
+      setTimeout(()=>{
+        asignarCortadoresModal.style.display='none';
+      },800);
+    } else {
+      asignarMessage.style.color='red';
+      asignarMessage.textContent=data.message||'Error al asignar';
+    }
+  }catch(error){
+    console.error(error);
+    asignarMessage.textContent='Error de conexión';
+  }
+});
+
+/****************************************************
+ * DETECTAR CLIC "CAMBIAR ESTADO" Y "ENTREGAR" (tabla de un cortador)
+ ****************************************************/
+document.addEventListener('click',(e)=>{
+  // Cambiar estado
+  if(e.target.classList.contains('estado-btn')){
+    const pid=e.target.dataset.id;
+    const currentState=e.target.dataset.estado;
+    const cId=e.target.dataset.cortador||0;
+    cambiarEstadoPedidoId.value=pid;
+    cambiarEstadoMessage.textContent='';
+
+    const states=['Recibido','Cortando','Listo','Entregado'];
+    selectEstado.innerHTML='';
+    states.forEach(st=>{
+      if(st!==currentState){
+        const opt=document.createElement('option');
+        opt.value=st;
+        opt.textContent=st;
+        selectEstado.appendChild(opt);
+      }
+    });
+    selectEstado.setAttribute('data-cortador', cId);
+    cambiarEstadoModal.style.display='block';
+  }
+  // Entregar
+  if(e.target.classList.contains('entrega-btn')){
+    const pid=e.target.dataset.id;
+    // ignoramos cId para entregar, no hace falta
+    entregarPedidoId.value=pid;
+    entregarMessage.textContent='';
+    loadPedidoProductos(pid);
+    entregarModal.style.display='block';
+  }
+});
+
+/****************************************************
+ * CAMBIAR ESTADO => PUT /api/pedidos/:id/estado
+ ****************************************************/
+btnGuardarEstado.addEventListener('click', async ()=>{
+  cambiarEstadoMessage.textContent='';
+  const pid=cambiarEstadoPedidoId.value;
+  const nuevoEstado=selectEstado.value;
+  if(!pid||!nuevoEstado){
+    cambiarEstadoMessage.textContent='Faltan datos';
+    return;
+  }
+  const cId=parseInt(selectEstado.getAttribute('data-cortador')||0);
+
+  cambiarEstadoModal.style.display='none';
+  try{
+    const body={
+      nuevoEstado,
+      cortadorId: cId // si es “Cortando” o “Listo”, se usará
+    };
+    const resp=await fetch(`http://localhost:3000/api/pedidos/${pid}/estado`,{
+      method:'PUT',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(body)
+    });
+    const data=await resp.json();
+    if(resp.ok){
+      cambiarEstadoMessage.style.color='green';
+      cambiarEstadoMessage.textContent=data.message||'Estado cambiado';
+      // recargar
+      loadPedidos();
+    } else {
+      cambiarEstadoMessage.style.color='red';
+      cambiarEstadoMessage.textContent=data.message||'Error al cambiar estado';
+    }
+  }catch(error){
+    console.error(error);
+    cambiarEstadoMessage.textContent='Error de conexión';
+  }
+});
+
+/****************************************************
+ * ENTREGAR
+ ****************************************************/
+btnEntregar.addEventListener('click', async ()=>{
+  entregarMessage.textContent='';
+  const pid=entregarPedidoId.value;
+  if(!pid){
+    entregarMessage.textContent='No hay pedido seleccionado';
+    return;
+  }
+
+  const lis=entregarProductosList.querySelectorAll('li');
+  let productosAEntregar=[];
+  lis.forEach(li=>{
+    const ck=li.querySelector('.ck-entregar');
+    const num=li.querySelector('input[type="number"]');
+    if(ck && ck.checked){
+      const pId=parseInt(num.dataset.productoId);
+      const ctd=parseInt(num.value)||0;
+      if(ctd>0){
+        productosAEntregar.push({ productoId:pId, cantidad:ctd });
+      }
+    }
+  });
+  if(productosAEntregar.length===0){
+    entregarMessage.textContent='No seleccionaste productos a entregar';
+    return;
+  }
+  try{
+    const resp=await fetch(`http://localhost:3000/api/pedidos/${pid}/entregas`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ productosAEntregar })
+    });
+    const data=await resp.json();
+    if(resp.ok){
+      entregarMessage.style.color='green';
+      entregarMessage.textContent=data.message||'Marcado como Entregado';
+      loadPedidos();
+      setTimeout(()=>{
+        entregarModal.style.display='none';
+      },800);
+    } else {
+      entregarMessage.style.color='red';
+      entregarMessage.textContent=data.message||'Error al entregar';
+    }
+  }catch(error){
+    console.error(error);
+    entregarMessage.textContent='Error de conexión';
+  }
+});
+
+/****************************************************
+ * CARGAR PRODUCTOS PARA ENTREGAR (con checkbox)
+ ****************************************************/
+async function loadPedidoProductos(pid){
+  entregarProductosList.innerHTML='Cargando...';
+  try{
+    const resp=await fetch(`http://localhost:3000/api/pedidos/${pid}`);
+    const data=await resp.json();
+    if(resp.ok){
+      let html='<ul>';
+      data.productos.forEach(prod=>{
+        html+=`
+          <li>
+            <label>
+              <input type="checkbox" class="ck-entregar" />
+              ${prod.producto_nombre||'Producto'} (Disponible: ${prod.cantidad})
+            </label>
+            <input type="number" min="0" max="${prod.cantidad}" value="0"
+                   data-producto-id="${prod.productoId}" disabled />
+          </li>
+        `;
+      });
+      html+='</ul>';
+      entregarProductosList.innerHTML=html;
+
+      // Manejo de habilitar input sólo si se checkea
+      entregarProductosList.querySelectorAll('.ck-entregar').forEach(ck=>{
+        ck.addEventListener('change',(ev)=>{
+          const num=ev.target.parentNode.parentNode.querySelector('input[type="number"]');
+          if(ck.checked){
+            num.disabled=false;
+            if(parseInt(num.value)===0){
+              num.value=1; 
+            }
+          } else {
+            num.value=0;
+            num.disabled=true;
+          }
+        });
+      });
+    } else {
+      entregarProductosList.innerHTML=`<p>${data.message||'Error al cargar pedido'}</p>`;
+    }
+  }catch(error){
+    console.error(error);
+    entregarProductosList.innerHTML='<p>Error de conexión</p>';
+  }
+}
+
+/****************************************************
+ * INIT
+ ****************************************************/
+(function init(){
+  loadPedidos(); // Activos
+})();
+</script>
+</body>
+</html>

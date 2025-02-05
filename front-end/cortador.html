@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Covinhar - Cortador</title>
+  <link rel="stylesheet" href="styles.css">
+  <!-- Socket.IO -->
+  <script src="http://localhost:3000/socket.io/socket.io.js"></script>
+</head>
+<body class="facturador-body">
+
+<header class="header">
+  <div class="header-left">
+    <img src="img/logo.png" alt="Logo Covinhar" class="logo-image-small">
+  </div>
+  <h1>Área del Cortador</h1>
+  <div id="userInfo" class="user-info"></div>
+  <nav>
+    <button id="btnLogout" class="btn-3d logout">Logout</button>
+  </nav>
+</header>
+
+<main class="container">
+  <div class="top-actions">
+    <button id="btnVerPedidos" class="btn-3d">Mis Pedidos</button>
+  </div>
+
+  <section class="search-section">
+    <label>Buscar:</label>
+    <input type="text" id="searchTerm" placeholder="Factura, Cliente...">
+    <button id="btnSearch" class="btn-3d">Buscar</button>
+  </section>
+
+  <section id="pedidosSection" class="list-section">
+    <h2>Pedidos Asignados al Cortador</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Factura</th>
+          <th>Cliente</th>
+          <th>Productos</th>
+          <th>Fecha</th>
+          <th>Hora</th>
+          <th>Estado</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody id="pedidosTableBody"></tbody>
+    </table>
+    <div id="paginationControls"></div>
+  </section>
+</main>
+
+<!-- MODAL VER PRODUCTOS -->
+<div id="verProductosModal" class="modal">
+  <div class="modal-content">
+    <span id="closeVerProductosModal" class="close">&times;</span>
+    <h2>Productos del Pedido</h2>
+    <div id="productosPedidoList"></div>
+  </div>
+</div>
+
+<!-- MODAL CAMBIAR ESTADO -->
+<div id="cambiarEstadoModal" class="modal">
+  <div class="modal-content">
+    <span id="closeCambiarEstadoModal" class="close">&times;</span>
+    <h2>Cambiar Estado</h2>
+    <input type="hidden" id="estadoPedidoId" value="">
+
+    <label>Nuevo Estado:</label>
+    <select id="selectEstado">
+      <!-- se llenará dinámicamente -->
+    </select>
+
+    <div id="cambiarEstadoMessage" class="message"></div>
+    <button id="btnCambiarEstado" class="btn-3d">Cambiar</button>
+  </div>
+</div>
+
+<!-- MODAL ENTREGAR -->
+<div id="entregarModal" class="modal">
+  <div class="modal-content">
+    <span id="closeEntregarModal" class="close">&times;</span>
+    <h2>Entregar Pedido</h2>
+    <input type="hidden" id="entregarPedidoId" value="">
+    <p>Selecciona la cantidad que vas a entregar de cada producto:</p>
+    <div id="entregarProductosList"></div>
+    <div id="entregarMessage" class="message"></div>
+    <button id="btnEntregar" class="btn-3d">Guardar Entrega</button>
+  </div>
+</div>
+
+<script>
+/***************************************************
+ * 1. CHECK AUTH
+ ***************************************************/
+const token = localStorage.getItem('token');
+const usuario = localStorage.getItem('usuario');
+const rol = localStorage.getItem('rol');
+// ID real del cortador (para "Cortando"/"Listo")
+let cortadorId = localStorage.getItem('cortadorId'); // puede ser null
+
+if(!token || !usuario || !rol){
+  window.location.href='login.html';
+}
+if(rol !== 'cortador'){
+  alert('No tienes acceso a esta sección');
+  window.location.href='login.html';
+}
+document.getElementById('userInfo').textContent = `Bienvenido, ${usuario} [Cortador]`;
+
+/***************************************************
+ * 2. SOCKET.IO
+ ***************************************************/
+const socket = io('http://localhost:3000');
+socket.on('pedidoActualizado',(data)=>{
+  console.log('pedidoActualizado:', data);
+  loadPedidos();
+});
+
+/***************************************************
+ * DOM
+ ***************************************************/
+const btnLogout = document.getElementById('btnLogout');
+btnLogout.addEventListener('click',()=>{
+  localStorage.removeItem('token');
+  localStorage.removeItem('usuario');
+  localStorage.removeItem('rol');
+  localStorage.removeItem('cortadorId');
+  window.location.href='login.html';
+});
+
+const btnVerPedidos = document.getElementById('btnVerPedidos');
+const btnSearch = document.getElementById('btnSearch');
+const searchTerm = document.getElementById('searchTerm');
+const pedidosTableBody = document.getElementById('pedidosTableBody');
+const paginationControls = document.getElementById('paginationControls');
+
+const verProductosModal = document.getElementById('verProductosModal');
+const closeVerProductosModal = document.getElementById('closeVerProductosModal');
+const productosPedidoList = document.getElementById('productosPedidoList');
+
+const cambiarEstadoModal = document.getElementById('cambiarEstadoModal');
+const closeCambiarEstadoModal = document.getElementById('closeCambiarEstadoModal');
+const estadoPedidoId = document.getElementById('estadoPedidoId');
+const selectEstado = document.getElementById('selectEstado');
+const cambiarEstadoMessage = document.getElementById('cambiarEstadoMessage');
+const btnCambiarEstado = document.getElementById('btnCambiarEstado');
+
+const entregarModal = document.getElementById('entregarModal');
+const closeEntregarModal = document.getElementById('closeEntregarModal');
+const entregarPedidoId = document.getElementById('entregarPedidoId');
+const entregarProductosList = document.getElementById('entregarProductosList');
+const entregarMessage = document.getElementById('entregarMessage');
+const btnEntregar = document.getElementById('btnEntregar');
+
+/***************************************************
+ * EVENTOS
+ ***************************************************/
+btnVerPedidos.addEventListener('click', () => {
+  loadPedidos();
+});
+btnSearch.addEventListener('click', () => {
+  loadPedidos(1);
+});
+closeVerProductosModal.addEventListener('click', () => {
+  verProductosModal.style.display='none';
+});
+closeCambiarEstadoModal.addEventListener('click', () => {
+  cambiarEstadoModal.style.display='none';
+});
+closeEntregarModal.addEventListener('click', () => {
+  entregarModal.style.display='none';
+});
+
+/***************************************************
+ * OBTENER cortadorId DEL BACK (si no existe)
+ ***************************************************/
+async function ensureCortadorId(){
+  if(!cortadorId){
+    // Buscar en la tabla cortadores
+    try{
+      const resp=await fetch('http://localhost:3000/api/cortadores');
+      const data=await resp.json();
+      if(resp.ok){
+        const found = data.find(c=> c.nombre.toLowerCase()===usuario.toLowerCase());
+        if(found){
+          cortadorId= found.id;
+          localStorage.setItem('cortadorId', cortadorId);
+        }
+      }
+    }catch(e){
+      console.error(e);
+    }
+  }
+}
+
+/***************************************************
+ * CARGAR PEDIDOS (buscando por usuario)
+ ***************************************************/
+async function loadPedidos(page=1){
+  const query=`?search=${usuario}&page=${page}&limit=10`;
+  try{
+    const resp=await fetch(`http://localhost:3000/api/pedidos${query}`);
+    const data=await resp.json();
+    if(resp.ok){
+      renderPedidos(data.data, data.page, data.total, data.limit);
+    } else {
+      console.error('Error al cargar pedidos (Cortador):', data);
+    }
+  }catch(error){
+    console.error(error);
+  }
+}
+
+function renderPedidos(pedidos, currentPage, total, limit){
+  pedidosTableBody.innerHTML='';
+  paginationControls.innerHTML='';
+
+  pedidos.forEach(p=>{
+    if(p.estado==='Entregado'){
+      return; // si no quieres ver los entregados
+    }
+    const tr=document.createElement('tr');
+    const fechaStr=p.fecha_entrega? p.fecha_entrega.substring(0,10):'';
+    const horaStr=p.hora_entrega? p.hora_entrega.substring(0,5):'';
+
+    // Botón "Entregar" sólo si p.estado==='Listo'
+    let entregarBtn='';
+    if(p.estado==='Listo'){
+      entregarBtn=`<button class="btn-3d btn-small entrega-btn" data-id="${p.id}">Entregar</button>`;
+    }
+
+    tr.innerHTML=`
+      <td>${p.id}</td>
+      <td>${p.numero_factura}</td>
+      <td>${p.cliente}</td>
+      <td>
+        <button class="btn-3d btn-small ver-productos-btn" data-prod="${p.productos||''}">
+          Ver
+        </button>
+      </td>
+      <td>${fechaStr}</td>
+      <td>${horaStr}</td>
+      <td>${p.estado||''}</td>
+      <td>
+        <button class="btn-3d btn-small estado-btn" data-id="${p.id}" data-estado="${p.estado||''}">
+          Cambiar Estado
+        </button>
+        ${entregarBtn}
+      </td>
+    `;
+    pedidosTableBody.appendChild(tr);
+  });
+
+  // Paginación
+  const totalPages = Math.ceil(total/limit);
+  for(let i=1;i<=totalPages;i++){
+    const b=document.createElement('button');
+    b.classList.add('btn-3d','btn-small');
+    b.textContent=i;
+    if(i===currentPage) b.disabled=true;
+    b.addEventListener('click',()=>loadPedidos(i));
+    paginationControls.appendChild(b);
+  }
+
+  // Ver Productos
+  document.querySelectorAll('.ver-productos-btn').forEach(btn=>{
+    btn.addEventListener('click',(e)=>{
+      const txt=e.target.dataset.prod;
+      verProductosModal.style.display='block';
+      productosPedidoList.innerHTML='';
+      if(!txt){
+        productosPedidoList.innerHTML='<p>Sin productos</p>';
+      } else {
+        const parts=txt.split(' | ');
+        const ul=document.createElement('ul');
+        parts.forEach(str=>{
+          const li=document.createElement('li');
+          li.textContent=str;
+          ul.appendChild(li);
+        });
+        productosPedidoList.appendChild(ul);
+      }
+    });
+  });
+
+  // Cambiar Estado
+  document.querySelectorAll('.estado-btn').forEach(btn=>{
+    btn.addEventListener('click',(e)=>{
+      const pid=e.target.dataset.id;
+      const currentSt=e.target.dataset.estado;
+      estadoPedidoId.value=pid;
+      cambiarEstadoMessage.textContent='';
+
+      // Llenamos el <select> (omitiendo el actual)
+      const states=['Recibido','Cortando','Listo','Entregado'];
+      selectEstado.innerHTML='';
+      states.forEach(st=>{
+        if(st!==currentSt){
+          const opt=document.createElement('option');
+          opt.value=st;
+          opt.textContent=st;
+          selectEstado.appendChild(opt);
+        }
+      });
+      cambiarEstadoModal.style.display='block';
+    });
+  });
+
+  // Entregar
+  document.querySelectorAll('.entrega-btn').forEach(btn=>{
+    btn.addEventListener('click', async (e)=>{
+      const pid=e.target.dataset.id;
+      entregarPedidoId.value=pid;
+      entregarMessage.textContent='';
+      await loadPedidoProductos(pid);
+      entregarModal.style.display='block';
+    });
+  });
+}
+
+/***************************************************
+ * CAMBIAR ESTADO
+ ***************************************************/
+btnCambiarEstado.addEventListener('click', async ()=>{
+  cambiarEstadoMessage.textContent='';
+  const pid=estadoPedidoId.value;
+  const nuevoEstado=selectEstado.value;
+  if(!pid||!nuevoEstado){
+    cambiarEstadoMessage.textContent='Faltan datos';
+    return;
+  }
+  if(!cortadorId) cortadorId=0; // fallback
+
+  try{
+    const body={
+      nuevoEstado,
+      cortadorId: parseInt(cortadorId)
+    };
+    const resp=await fetch(`http://localhost:3000/api/pedidos/${pid}/estado`,{
+      method:'PUT',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(body)
+    });
+    const data=await resp.json();
+    if(resp.ok){
+      cambiarEstadoMessage.style.color='green';
+      cambiarEstadoMessage.textContent=data.message||'Estado cambiado';
+      loadPedidos();
+      setTimeout(()=>{
+        cambiarEstadoModal.style.display='none';
+      },500);
+    } else {
+      cambiarEstadoMessage.style.color='red';
+      cambiarEstadoMessage.textContent=data.message||'Error al cambiar estado';
+    }
+  }catch(error){
+    console.error(error);
+    cambiarEstadoMessage.textContent='Error de conexión';
+  }
+});
+
+/***************************************************
+ * ENTREGAR
+ ***************************************************/
+async function loadPedidoProductos(pid){
+  entregarProductosList.innerHTML='Cargando...';
+  try{
+    const resp=await fetch(`http://localhost:3000/api/pedidos/${pid}`);
+    const data=await resp.json();
+    if(resp.ok){
+      let html='<ul>';
+      data.productos.forEach(prod=>{
+        // Agregamos un checkbox para habilitar la entrega
+        html+=`
+          <li>
+            <label>
+              <input type="checkbox" class="ck-entregar" />
+              ${prod.producto_nombre||'Producto'} (Disponible: ${prod.cantidad})
+            </label>
+            <input type="number" min="0" max="${prod.cantidad}" value="0"
+                   data-producto-id="${prod.productoId}" disabled />
+          </li>
+        `;
+      });
+      html+='</ul>';
+      entregarProductosList.innerHTML=html;
+
+      // Añadimos eventListener para habilitar/deshabilitar input
+      entregarProductosList.querySelectorAll('input.ck-entregar').forEach(ck=>{
+        ck.addEventListener('change', (ev)=>{
+          const rowInput = ev.target.parentNode.parentNode.querySelector('input[type="number"]');
+          if(ck.checked){
+            rowInput.disabled=false;
+            if(parseInt(rowInput.value)===0){
+              // poner 1 por defecto? o 0?
+              rowInput.value=1;
+            }
+          } else {
+            rowInput.value=0;
+            rowInput.disabled=true;
+          }
+        });
+      });
+    } else {
+      entregarProductosList.innerHTML=`<p>${data.message||'Error al cargar pedido'}</p>`;
+    }
+  }catch(error){
+    console.error(error);
+    entregarProductosList.innerHTML='<p>Error de conexión</p>';
+  }
+}
+
+btnEntregar.addEventListener('click', async ()=>{
+  entregarMessage.textContent='';
+  const pid=entregarPedidoId.value;
+  if(!pid){
+    entregarMessage.textContent='No hay pedido seleccionado';
+    return;
+  }
+  const rows=entregarProductosList.querySelectorAll('li');
+  let productosAEntregar=[];
+
+  rows.forEach(li=>{
+    const ck=li.querySelector('input.ck-entregar');
+    const num=li.querySelector('input[type="number"]');
+    if(ck && ck.checked){
+      const productId=parseInt(num.dataset.productoId);
+      const ctd=parseInt(num.value)||0;
+      if(ctd>0){
+        productosAEntregar.push({ productoId: productId, cantidad: ctd });
+      }
+    }
+  });
+
+  if(productosAEntregar.length===0){
+    entregarMessage.textContent='No seleccionaste productos o cantidades > 0';
+    return;
+  }
+
+  try{
+    const body={ productosAEntregar };
+    const resp=await fetch(`http://localhost:3000/api/pedidos/${pid}/entregas`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify(body)
+    });
+    const data=await resp.json();
+    if(resp.ok){
+      entregarMessage.style.color='green';
+      entregarMessage.textContent=data.message||'Entregado con éxito';
+      loadPedidos();
+      setTimeout(()=>{
+        entregarModal.style.display='none';
+      },800);
+    } else {
+      entregarMessage.style.color='red';
+      entregarMessage.textContent=data.message||'Error al entregar';
+    }
+  }catch(error){
+    console.error(error);
+    entregarMessage.textContent='Error de conexión';
+  }
+});
+
+/***************************************************
+ * INIT
+ ***************************************************/
+(async function init(){
+  await ensureCortadorId();
+  loadPedidos();
+})();
+</script>
+</body>
+</html>
